@@ -30,5 +30,8 @@ t_qtree*		qtree_alloc(const t_frect* bounds);
 bool			qtree_insert(t_qtree* qtree, t_qtpoint* pt);
 t_array*		qtree_querryrange(const t_qtree* qtree, const t_frect* range);
 t_array*		qtree_removepointif(t_qtree* qtree, bool (*func)(t_qtpoint*));
+int				qtree_nodecount(const t_qtree* tree);
+int				qtree_ptscount(const t_qtree* tree);
+int				qtree_depth(const t_qtree* tree);
 
 #endif

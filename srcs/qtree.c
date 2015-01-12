@@ -27,6 +27,7 @@ static void		qtree_subdivide(t_qtree* qtree)
 
 	bounds.halfsize.x = qtree->bounds.halfsize.x / 2.0;
 	bounds.halfsize.y = qtree->bounds.halfsize.y / 2.0;
+	assert(bounds.halfsize.x >= 1.0 && bounds.halfsize.y >= 1.0);
 	bounds.origin.x = qtree->bounds.origin.x - bounds.halfsize.x;
 	bounds.origin.y = qtree->bounds.origin.y + bounds.halfsize.y;
 	qtree->northwest = qtree_alloc(&bounds);
@@ -204,5 +205,51 @@ t_array*		qtree_removepointif(t_qtree* qtree, bool (*func)(t_qtpoint*))
 			qtree_mergenode(qtree);
 	}
 	return (points);
+}
+
+int				qtree_nodecount(const t_qtree* tree)
+{
+	if (tree->northwest == NULL)
+		return (1);
+	else
+	{
+		return (qtree_nodecount(tree->northwest)
+				+ qtree_nodecount(tree->northeast)
+				+ qtree_nodecount(tree->southwest)
+				+ qtree_nodecount(tree->southeast) + 1);
+	}
+}
+
+int				qtree_ptscount(const t_qtree* tree)
+{
+	if (tree->northwest == NULL)
+		return (tree->ptscount);
+	else
+	{
+		return (qtree_ptscount(tree->northwest)
+				+ qtree_ptscount(tree->northeast)
+				+ qtree_ptscount(tree->southwest)
+				+ qtree_ptscount(tree->southeast));
+	}
+}
+
+int				qtree_depth(const t_qtree* tree)
+{
+	int result;
+	int curr;
+
+	if (tree->northwest == NULL)
+		return (0);
+	else
+	{
+		result = qtree_depth(tree->northwest);
+		curr = qtree_depth(tree->northeast);
+		result = curr > result ? curr : result;
+		curr = qtree_depth(tree->southwest);
+		result = curr > result ? curr : result;
+		curr = qtree_depth(tree->southeast);
+		result = curr > result ? curr : result;
+	}
+	return (result + 1);
 }
 

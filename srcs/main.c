@@ -10,6 +10,20 @@ double	vec2d_len(double x, double y)
 	return sqrt((x * x) + (y * y));
 }
 
+double	point_len(t_fpoint pt)
+{
+	return sqrt((pt.x * pt.x) + (pt.y * pt.y));
+}
+
+t_fpoint point_sub(t_fpoint a, t_fpoint b)
+{
+	t_fpoint res;
+
+	res.x = a.x - b.x;
+	res.y = a.y - b.y;
+	return (res);
+}
+
 typedef struct	s_disk
 {
 	double		size;
@@ -25,6 +39,18 @@ t_disk*		disk_create(double size, uint32_t color)
 		disk->size = size;
 		disk->color = color;
 	return (disk);
+}
+
+bool		disk_intersect(const t_disk* disk1, const t_fpoint* pos1, const t_disk* disk2, const t_fpoint* pos2)
+{
+	double lenght;
+
+	if (disk1 == disk2)
+		return (false);
+	lenght = point_len(point_sub(*pos1, *pos2));
+	if (lenght < disk1->size + disk2->size)
+		return (true);
+	return (false);
 }
 
 bool	_func(t_qtpoint* point)
@@ -108,36 +134,58 @@ void	drawtree(t_sdlh* sdlh, const t_qtree* tree, t_fpoint* campos, t_fpoint* win
 	}
 }
 
-bool	shouldinsert(const t_qtree* tree, const t_qtpoint* point)
+bool	tree_intersectdisk(const t_qtree* tree, const t_disk* disk, const t_fpoint* pos, double radmax)
 {
-	double		lenght;
 	t_array*	array;
+	t_frect		range;
 	unsigned int			i;
-	t_disk*		disk;
 	t_qtpoint*	otherpoint;
 	t_disk*		otherdisk;
-	t_frect		range;
 
-	disk = point->data;
-	range.origin = point->pos;
-	range.halfsize.x = disk->size + 25.0;
-	range.halfsize.y = disk->size + 25.0;
+	range.origin = *pos;
+	range.halfsize.x = disk->size + radmax;
+	range.halfsize.y = disk->size + radmax;
 	array = qtree_querryrange(tree, &range);
 	i = 0;
 	while (i < array->size)
 	{
 		otherpoint = array_get(array, i);
 		otherdisk = otherpoint->data;
-		lenght = vec2d_len(otherpoint->pos.x - point->pos.x, otherpoint->pos.y - point->pos.y);
-		if (lenght < disk->size + otherdisk->size)
-		{
-			array_destroy(array);
-			return (false);
-		}
+		if (disk_intersect(disk, pos, otherdisk, &otherpoint->pos))
+			return (true);
 		i++;
 	}
-	array_destroy(array);
-	return (true);
+	return (false);
+}
+
+bool	tree_intersect(const t_qtree* tree, const t_qtree* root)
+{
+	int i;
+	const t_qtpoint*	point;
+
+	if (tree->northwest == NULL)
+	{
+		i = 0;
+		while (i < tree->ptscount)
+		{
+			point = tree->points + i;
+			if (tree_intersectdisk(root, point->data, &point->pos, 30.0))
+				return (true);
+			i++;
+		}
+	}
+	else
+	{
+		if (tree_intersect(tree->northwest, root) == true)
+			return (true);
+		if (tree_intersect(tree->northeast, root) == true)
+			return (true);
+		if (tree_intersect(tree->southwest, root) == true)
+			return (true);
+		if (tree_intersect(tree->southeast, root) == true)
+			return (true);
+	}
+	return (false);
 }
 
 int		main(void)
@@ -148,6 +196,10 @@ int		main(void)
 	t_evnh*			events;
 	t_qtpoint		qtpoint;
 	t_fpoint		campos;
+	t_disk*			disk;
+	int				lastptscount;
+	int				currptscount;
+	bool			prevented;
 
 	srand(time(NULL));
 	bounds.origin.x = WIN_WIDTH / 2.0;
@@ -159,15 +211,54 @@ int		main(void)
 	tree = qtree_alloc(&bounds);
 	sdlh_init(&sdlh);
 	events = events_create();
+	lastptscount = 0;
 	while (events->quitflag == false)
 	{
 		campos.x -= events->mov_x * events->zoom * 2;
 		campos.y += events->mov_y * events->zoom * 2;
-		qtpoint.pos.x = (rand() % (WIN_WIDTH * 10)) / 10.0;
-		qtpoint.pos.y = (rand() % (WIN_HEIGHT * 10)) / 10.0;
-		qtpoint.data = disk_create(((rand() % 200) + 50) / 10.0, rand() % 0xFFFFFF);
-		if (!shouldinsert(tree, &qtpoint) || !qtree_insert(tree, &qtpoint))
-			free(qtpoint.data);
+		if (events->play)
+		{
+			prevented = false;
+			printf("______________\n");
+			printf("%i nodes for %i points and a depth of %i\n", qtree_nodecount(tree), lastptscount, qtree_depth(tree));
+			qtpoint.pos.x = (rand() % (WIN_WIDTH * 10)) / 10.0;
+			qtpoint.pos.y = (rand() % (WIN_HEIGHT * 10)) / 10.0;
+			disk = disk_create(/*((rand() % 100) + 150) / 10.0*/ 25.0, rand() % 0xFFFFFF);
+			qtpoint.data = disk;
+			if (qtpoint.pos.x - disk->size < 0.0 || qtpoint.pos.x + disk->size >= WIN_WIDTH || qtpoint.pos.y - disk->size < 0.0 || qtpoint.pos.y + disk->size >= WIN_HEIGHT)
+			{
+				printf("Out of border prevented\n");
+				prevented = true;
+				free(disk);
+			}
+			else if (tree_intersectdisk(tree, disk, &qtpoint.pos, 30.0))
+			{
+				printf("Intersection prevented\n");
+				prevented = true;
+				free(disk);
+			}
+			else if (!qtree_insert(tree, &qtpoint))
+			{
+				printf("Insertion failed\n");
+				prevented = true;
+				free(disk);
+			}
+			else
+				printf("Insert done\n");
+			currptscount = qtree_ptscount(tree);
+			if (!prevented && currptscount == lastptscount)
+			{
+				printf("Something went really wrong!\n");
+				printf("debug: %i nodes for %i points and a depth of %i\n", qtree_nodecount(tree), qtree_ptscount(tree), qtree_depth(tree));
+				events->play = false;
+			}
+			lastptscount = currptscount;
+			if (tree_intersect(tree, tree))
+			{
+				printf("FAILED\n");
+				events->play = false;
+			}
+		}
 		drawtree(&sdlh, tree, &campos, &bounds.origin, events->zoom);
 		sdlh_update_window(&sdlh);
 		events_update(events);
