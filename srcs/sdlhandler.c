@@ -93,7 +93,7 @@ void			sdlh_mixpixel(t_sdlh *sdlh, int x, int y, uint32_t pixel, float gain)
 void			sdlh_update_window(const t_sdlh*	env)
 {
 	static int	lastframe = 0;
-	const int	framerate = 20;
+	const int	framerate = 15;
 	int			now;
 	int x, y;
 

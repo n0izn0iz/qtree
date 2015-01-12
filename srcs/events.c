@@ -16,6 +16,7 @@ t_evnh*		events_create()
 		env->mov_x = 0;
 		env->mov_y = 0;
 		env->zoom = 1.0;
+		env->drawgrid = true;
 	}
 	return (env);
 }
@@ -34,6 +35,10 @@ void		events_update(t_evnh* env)
 			switch (e.key.keysym.sym) {
 			case SDLK_SPACE:
 				env->play = !env->play;
+				break ;
+			case SDLK_g:
+				env->drawgrid = !env->drawgrid;
+				break ;
 			default:
 				break ;
 			}

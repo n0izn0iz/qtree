@@ -13,6 +13,7 @@ typedef struct		s_evnh
 	int				mov_x;
 	int				mov_y;
 	double			zoom;
+	bool			drawgrid;
 }					t_evnh;
 
 
