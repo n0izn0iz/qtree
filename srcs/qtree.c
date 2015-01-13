@@ -174,7 +174,7 @@ static void		qtree_mergenode(t_qtree* qtree)
 	free(node);
 }
 
-t_array*		qtree_removepointif(t_qtree* qtree, bool (*func)(t_qtpoint*))
+t_array*		qtree_removepointif(t_qtree* qtree, t_qtreefunc* func, void* data)
 {
 	t_array* 	points;
 	t_qtpoint*	currpt;
@@ -188,7 +188,7 @@ t_array*		qtree_removepointif(t_qtree* qtree, bool (*func)(t_qtpoint*))
 		{
 			currpt = (t_qtpoint*)malloc(sizeof(t_qtpoint));
 			*currpt = qtree->points[i];
-			if (func(currpt))
+			if ((*func[currpt->type])(currpt, data))
 			{
 				_removepoint(qtree->points, i, &qtree->ptscount);
 				array_append(points, currpt);
@@ -199,10 +199,10 @@ t_array*		qtree_removepointif(t_qtree* qtree, bool (*func)(t_qtpoint*))
 	}
 	else
 	{
-		array_merge(points, qtree_removepointif(qtree->northwest, func));
-		array_merge(points, qtree_removepointif(qtree->northeast, func));
-		array_merge(points, qtree_removepointif(qtree->southwest, func));
-		array_merge(points, qtree_removepointif(qtree->southeast, func));
+		array_merge(points, qtree_removepointif(qtree->northwest, func, data));
+		array_merge(points, qtree_removepointif(qtree->northeast, func, data));
+		array_merge(points, qtree_removepointif(qtree->southwest, func, data));
+		array_merge(points, qtree_removepointif(qtree->southeast, func, data));
 		if (_childspointcount(qtree) <= QTREE_NODECAP && qtree_ispreleaf(qtree))
 			qtree_mergenode(qtree);
 	}
@@ -255,9 +255,10 @@ int				qtree_depth(const t_qtree* tree)
 	return (result + 1);
 }
 
-void			qtree_applyfunc(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* data)
+void			qtree_applyfunc(t_qtree* qtree, t_qtreefunc* func, void* data)
 {
 	int i;
+	t_qtpoint*	point;
 
 	if (qtree->northwest != NULL)
 	{
@@ -271,14 +272,15 @@ void			qtree_applyfunc(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* da
 		i = 0;
 		while (i < qtree->ptscount)
 		{
-			func(qtree->points + i, data);
+			point = qtree->points + i;
+			func[point->type](point, data);
 			i++;
 		}
 	}
 }
 
 
-void			_qtree_movepoints(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* data, t_qtree* root)
+void			_qtree_movepoints(t_qtree* qtree,t_qtreefunc* func, void* data, t_qtree* root)
 {
 	int			i;
 	t_qtpoint	pt;
@@ -298,7 +300,7 @@ void			_qtree_movepoints(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* 
 		while (i < qtree->ptscount)
 		{
 			pt = qtree->points[i];
-			func(&pt, data);
+			func[pt.type](&pt, data);
 			if (!frect_containsfpoint(&qtree->bounds, &pt.pos))
 			{
 				_removepoint(qtree->points, i, &qtree->ptscount);
@@ -311,7 +313,7 @@ void			_qtree_movepoints(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* 
 	}
 }
 
-void			qtree_movepoints(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* data)
+void			qtree_movepoints(t_qtree* qtree, t_qtreefunc* func, void* data)
 {
 	_qtree_movepoints(qtree, func, data, qtree);
 }

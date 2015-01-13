@@ -26,12 +26,14 @@ typedef struct	s_qtree
 	struct s_qtree*		southeast;
 }				t_qtree;
 
+typedef bool (*t_qtreefunc)(t_qtpoint*, void*);
+
 t_qtree*		qtree_alloc(const t_frect* bounds);
 bool			qtree_insert(t_qtree* qtree, t_qtpoint* pt);
 t_array*		qtree_querryrange(const t_qtree* qtree, const t_frect* range);
-void			qtree_applyfunc(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* data);
-void			qtree_movepoints(t_qtree* qtree, void (*func)(t_qtpoint*, void*), void* data);
-t_array*		qtree_removepointif(t_qtree* qtree, bool (*func)(t_qtpoint*));
+void			qtree_applyfunc(t_qtree* qtree, t_qtreefunc* func, void* data);
+void			qtree_movepoints(t_qtree* qtree, t_qtreefunc* func, void* data);
+t_array*		qtree_removepointif(t_qtree* qtree, t_qtreefunc* func, void* data);
 int				qtree_nodecount(const t_qtree* tree);
 int				qtree_ptscount(const t_qtree* tree);
 int				qtree_depth(const t_qtree* tree);

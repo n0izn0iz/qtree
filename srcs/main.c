@@ -3,14 +3,15 @@
 #include "events.h"
 #include "disk.h"
 #include "vecmath.h"
+#include "treerenderer.h"
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
 
 #define DISK_RADIUS 200.0
-#define WORLD_SIZE 100000
+#define WORLD_SIZE 10000
 
-void		colfunc(t_qtpoint* pt, void* data)
+bool		colfunc(t_qtpoint* pt, void* data)
 {
 	t_disk* disk;
 
@@ -18,98 +19,14 @@ void		colfunc(t_qtpoint* pt, void* data)
 	disk = pt->data;
 	if (disk->color < 0xFFFFFF)
 		disk->color += 0x1;
+	return (false);
 }
 
-
-bool	_func(t_qtpoint* point)
+bool	_func(t_qtpoint* point, void* data)
 {
+	(void)data;
 	(void)point;
 	return (!(rand() % 100));
-}
-
-static void		drawdisk(t_sdlh* sdlh, t_disk* disk, double x, double y, double zoom)
-{
-	int ix;
-	int iy;
-	double radius;
-
-	radius = disk->size * zoom;
-	ix = 0;
-	while (ix < radius * 2)
-	{
-		iy = 0;
-		while (iy < radius * 2)
-		{
-			if (vec2d_len(ix - radius, iy - radius) < radius)
-				sdlh_mixpixel(sdlh, x + ix - radius, y + iy - radius, disk->color, 0.5);
-			iy++;
-		}
-		ix++;
-	}
-}
-
-void	drawtree(t_sdlh* sdlh, const t_qtree* tree, t_fpoint* campos, t_fpoint* winoff, double zoom, bool drawgrid)
-{
-	int		i;
-	const t_qtpoint* point;
-	double ox, oy, top, bot, right, left, hfx, hfy;
-	t_frect		screenrect;
-
-	ox = (tree->bounds.origin.x * zoom) - (campos->x * zoom) + winoff->x;
-	oy = (tree->bounds.origin.y * zoom) - (campos->y * zoom) + winoff->y;
-	hfx = tree->bounds.halfsize.x * zoom;
-	hfy = tree->bounds.halfsize.y * zoom;
-	right = ox + hfx - 1.0;
-	left = ox - hfx;
-	bot = oy + hfy;
-	top = oy - hfy - 1.0;
-	screenrect.origin = *campos;
-	screenrect.halfsize = *winoff;
-	screenrect.halfsize.x /= zoom;
-	screenrect.halfsize.y /= zoom;
-	if (!frect_intersect(&tree->bounds, &screenrect))
-		return ;
-	if (drawgrid)
-	{
-		i = 0;
-		while (i < hfx - 1.0)
-		{
-			sdlh_putpixel(sdlh->surface, ox + i, top, 0xFFFFFF);
-			sdlh_putpixel(sdlh->surface, ox - i, top, 0xFFFFFF);
-			sdlh_putpixel(sdlh->surface, ox + i, bot, 0xFFFFFF);
-			sdlh_putpixel(sdlh->surface, ox - i, bot, 0xFFFFFF);
-			i++;
-		}
-		i = 0;
-		while (i < hfy - 1.0)
-		{
-			sdlh_putpixel(sdlh->surface, right, oy + i, 0xFFFFFF);
-			sdlh_putpixel(sdlh->surface, right, oy - i, 0xFFFFFF);
-			sdlh_putpixel(sdlh->surface, left, oy + i, 0xFFFFFF);
-			sdlh_putpixel(sdlh->surface, left, oy - i, 0xFFFFFF);
-			i++;
-		}
-	}
-	if (tree->northwest != NULL)
-	{
-		drawtree(sdlh, tree->northwest, campos, winoff, zoom, drawgrid);
-		drawtree(sdlh, tree->northeast, campos, winoff, zoom, drawgrid);
-		drawtree(sdlh, tree->southwest, campos, winoff, zoom, drawgrid);
-		drawtree(sdlh, tree->southeast, campos, winoff, zoom, drawgrid);
-	}
-	else
-	{
-		i = 0;
-		while (i < tree->ptscount)
-		{
-			point = tree->points + i;
-			ox = (point->pos.x * zoom) - (campos->x * zoom) + winoff->x;
-			oy = (point->pos.y * zoom) - (campos->y * zoom) + winoff->y;
-			drawdisk(sdlh, point->data, ox, oy, zoom);
-			sdlh_putpixel(sdlh->surface, ox, oy, 0xFFFF00);
-			i++;
-		}
-	}
 }
 
 bool	tree_intersectdisk(const t_qtree* tree, const t_disk* disk, const t_fpoint* pos, double radmax)
@@ -161,12 +78,12 @@ double		reflect(double angle, t_fpoint* normal)
 	b = point_len(bvec);
 	c = point_len(cvec);
 	result = -acos(b / c);*/
-	result = -angle;
+	result = angle - RAD(180.0);
 	(void)normal;
 	return (result);
 }
 
-void		billiardfunc(t_qtpoint* pt, void* data)
+bool		billiardfunc(t_qtpoint* pt, void* data)
 {
 	t_fpoint	unitvec;
 	t_fpoint	newpos;
@@ -184,33 +101,34 @@ void		billiardfunc(t_qtpoint* pt, void* data)
 		normal.x = 1;
 		normal.y = 0;
 		disk->angle = reflect(disk->angle, &normal);
-		return ;
+		return (true);
 	}
 	if (newpos.x + disk->size > WORLD_SIZE)
 	{
 		normal.x = -1;
 		normal.y = 0;
 		disk->angle = reflect(disk->angle, &normal);
-		return ;
+		return (true);
 	}
 	if (newpos.y - disk->size <= -WORLD_SIZE) 
 	{
 		normal.x = 0;
 		normal.y = 1;
 		disk->angle = reflect(disk->angle, &normal);
-		return ;
+		return (true);
 	}
 	if (newpos.y + disk->size > WORLD_SIZE)
 	{
 		normal.x = 0;
 		normal.y = -1;
 		disk->angle = reflect(disk->angle, &normal);
-		return ;
+		return (true);
 	}
 	if (!tree_intersectdisk(tree, disk, &newpos, DISK_RADIUS))
 		pt->pos = newpos;
 	else
 		disk->angle = disk->angle - RAD(180.0);
+	return (true);
 }
 
 
@@ -255,6 +173,7 @@ int		main(void)
 	t_fpoint		campos;
 	t_fpoint		winoff;
 	t_disk*			disk;
+	t_qtreefunc		func[1];
 	unsigned int	i;
 	int				lastptscount;
 	int				currptscount;
@@ -316,8 +235,10 @@ int		main(void)
 					events->play = false;
 				}
 				lastptscount = currptscount;
-				qtree_applyfunc(tree, colfunc, NULL);
-				qtree_movepoints(tree, billiardfunc, tree);
+				func[0] = colfunc;
+				qtree_applyfunc(tree, func, NULL);
+				func[0] = billiardfunc;
+				qtree_movepoints(tree, func, tree);
 				if (tree_intersect(tree, tree))
 				{
 					printf("FAILED\n");
@@ -328,7 +249,8 @@ int		main(void)
 			}
 			else
 			{
-				array = qtree_removepointif(tree, _func);
+				func[0] = _func;
+				array = qtree_removepointif(tree, func, NULL);
 				lastptscount = qtree_ptscount(tree);
 				i = 0;
 				while (i < array->size)
