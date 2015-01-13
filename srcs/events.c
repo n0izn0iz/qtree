@@ -48,13 +48,13 @@ void		events_update(t_evnh* env)
 	env->mov_x = 0;
 	env->mov_y = 0;
 	if (kstate[SDL_GetScancodeFromKey(SDLK_d)])
-		env->mov_x += 1;
-	if (kstate[SDL_GetScancodeFromKey(SDLK_q)])
 		env->mov_x -= 1;
+	if (kstate[SDL_GetScancodeFromKey(SDLK_q)])
+		env->mov_x += 1;
 	if (kstate[SDL_GetScancodeFromKey(SDLK_z)])
-		env->mov_y += 1;
-	if (kstate[SDL_GetScancodeFromKey(SDLK_s)])
 		env->mov_y -= 1;
+	if (kstate[SDL_GetScancodeFromKey(SDLK_s)])
+		env->mov_y += 1;
 	if (kstate[SDL_GetScancodeFromKey(SDLK_p)])
 		env->zoom *= 1.1;
 	if (kstate[SDL_GetScancodeFromKey(SDLK_m)])
