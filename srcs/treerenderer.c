@@ -46,7 +46,7 @@ void	drawfrect(t_sdlh* sdlh, t_frect rect, const t_fpoint* campos, const t_fpoin
 			j = top;
 			while (j < bot)
 			{
-				sdlh_putpixel(sdlh->surface, i, j, color);
+				sdlh_mixpixel(sdlh, i, j, color, 0.5);
 				j++;
 			}
 			i++;
@@ -92,7 +92,8 @@ void	drawtree(t_sdlh* sdlh, const t_qtree* tree, t_fpoint* campos, t_fpoint* win
 				rect = point->shape.data;
 				drawfrect(sdlh, srect_tofrect(*rect, point->shape.pos.x, point->shape.pos.y), campos, winoff, zoom, rect->color, true);
 			}
-			sdlh_putpixel(sdlh->surface, ox, oy, 0xFFFF00);
+			if (drawgrid)
+				sdlh_putpixel(sdlh->surface, ox, oy, 0xFFFF00);
 			i++;
 		}
 	}
