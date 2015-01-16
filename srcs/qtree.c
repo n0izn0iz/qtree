@@ -56,9 +56,9 @@ static void		qtree_subdivide(t_qtree* qtree)
 	qtree->ptscount = 0;
 }
 
-bool			qtree_insert(t_qtree* qtree, t_qtpoint* pt)
+bool			qtree_insert(t_qtree* qtree, const t_qtpoint* pt)
 {
-	if (frect_containsfpoint(&qtree->bounds, &pt->pos) == false)
+	if (frect_containsfpoint(&qtree->bounds, &pt->shape.pos) == false)
 		return (false);
 	if (qtree->northwest == NULL)
 	{
@@ -97,7 +97,7 @@ t_array*		qtree_querryrange(const t_qtree* qtree, const t_frect* range)
 		while (i < qtree->ptscount)
 		{
 			point = qtree->points + i;
-			if (frect_containsfpoint(range, &point->pos))
+			if (frect_containsfpoint(range, &point->shape.pos))
 				array_append(array, point);
 			i += 1;
 		}
@@ -301,7 +301,7 @@ void			_qtree_movepoints(t_qtree* qtree,t_qtreefunc* func, void* data, t_qtree* 
 		{
 			pt = qtree->points[i];
 			func[pt.type](&pt, data);
-			if (!frect_containsfpoint(&qtree->bounds, &pt.pos))
+			if (!frect_containsfpoint(&qtree->bounds, &pt.shape.pos))
 			{
 				_removepoint(qtree->points, i, &qtree->ptscount);
 				assert(qtree_insert(root, &pt));
@@ -318,3 +318,34 @@ void			qtree_movepoints(t_qtree* qtree, t_qtreefunc* func, void* data)
 	_qtree_movepoints(qtree, func, data, qtree);
 }
 
+t_shape*			qtree_intersectrange(const t_qtree* qtree, const t_qtpoint* pt, const t_frect* bounds)
+{
+	int			i;
+	t_shape*	result;
+
+	result = NULL;
+	if (bounds != NULL && !frect_intersect(&qtree->bounds, bounds))
+		return (result);
+	if (qtree->northwest != NULL)
+	{
+		if ((result = qtree_intersectrange(qtree->northwest, pt, bounds)) != NULL)
+			return (result);
+		if ((result = qtree_intersectrange(qtree->northeast, pt, bounds)) != NULL)
+			return (result);
+		if ((result = qtree_intersectrange(qtree->southwest, pt, bounds)) != NULL)
+			return (result);
+		if ((result = qtree_intersectrange(qtree->southeast, pt, bounds)) != NULL)
+			return (result);
+	}
+	else
+	{
+		i = 0;
+		while (i < qtree->ptscount)
+		{
+			if (qtree->points + i != pt && (result = shape_intersect(&qtree->points[i].shape, &pt->shape)) != NULL)
+				return (result);
+			i++;
+		}
+	}
+	return (result);
+}

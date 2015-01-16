@@ -4,9 +4,11 @@
 #include "disk.h"
 #include "vecmath.h"
 #include "treerenderer.h"
+#include "srect.h"
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include "shapetype.h"
 
 #define DISK_RADIUS 200.0
 #define WORLD_SIZE 10000
@@ -16,9 +18,12 @@ bool		colfunc(t_qtpoint* pt, void* data)
 	t_disk* disk;
 
 	(void)data;
-	disk = pt->data;
-	if (disk->color < 0xFFFFFF)
-		disk->color += 0x1;
+	if (pt->shape.type == SHAPE_DISK)
+	{
+		disk = pt->shape.data;
+		if (disk->color < 0xFFFFFF)
+			disk->color += 0x1;
+	}
 	return (false);
 }
 
@@ -27,34 +32,6 @@ bool	_func(t_qtpoint* point, void* data)
 	(void)data;
 	(void)point;
 	return (!(rand() % 100));
-}
-
-bool	tree_intersectdisk(const t_qtree* tree, const t_disk* disk, const t_fpoint* pos, double radmax)
-{
-	t_array*		array;
-	t_frect			range;
-	unsigned int	i;
-	t_qtpoint*		otherpoint;
-	t_disk*			otherdisk;
-
-	range.origin = *pos;
-	range.halfsize.x = disk->size + radmax;
-	range.halfsize.y = disk->size + radmax;
-	array = qtree_querryrange(tree, &range);
-	i = 0;
-	while (i < array->size)
-	{
-		otherpoint = array_get(array, i);
-		otherdisk = otherpoint->data;
-		if (disk_intersect(disk, pos, otherdisk, &otherpoint->pos))
-		{
-			array_destroy(array);
-			return (true);
-		}
-		i++;
-	}
-	array_destroy(array);
-	return (false);
 }
 
 t_fpoint	angletovec(double angle)
@@ -90,12 +67,17 @@ bool		billiardfunc(t_qtpoint* pt, void* data)
 	t_disk*		disk;
 	t_qtree*	tree;
 	t_fpoint	normal;
+	t_shape		*shape;
+	t_fpoint	oldpos;
+	t_frect		querrybounds;
 
 	tree = data;
-	disk = pt->data;
+	if (pt->shape.type != SHAPE_DISK)
+		return (true);
+	disk = pt->shape.data;
 	unitvec.x = cos(disk->angle) * 10;
 	unitvec.y = sin(disk->angle) * 10;
-	newpos = point_add(pt->pos, unitvec);
+	newpos = point_add(pt->shape.pos, unitvec);
 	if (newpos.x - disk->size <= -WORLD_SIZE)
 	{
 		normal.x = 1;
@@ -124,42 +106,16 @@ bool		billiardfunc(t_qtpoint* pt, void* data)
 		disk->angle = reflect(disk->angle, &normal);
 		return (true);
 	}
-	if (!tree_intersectdisk(tree, disk, &newpos, DISK_RADIUS))
-		pt->pos = newpos;
-	else
+	oldpos = pt->shape.pos;
+	pt->shape.pos = newpos;
+	querrybounds = frect_create(pt->shape.pos, fpoint_create(DISK_RADIUS + disk->size, DISK_RADIUS + disk->size));
+	if ((shape = qtree_intersectrange(tree, pt, &querrybounds)) != NULL)
+	{
+		shape_destroy(&shape);
 		disk->angle = disk->angle - RAD(180.0);
+		pt->shape.pos = oldpos;
+	}
 	return (true);
-}
-
-
-bool	tree_intersect(const t_qtree* tree, const t_qtree* root)
-{
-	int i;
-	const t_qtpoint*	point;
-
-	if (tree->northwest == NULL)
-	{
-		i = 0;
-		while (i < tree->ptscount)
-		{
-			point = tree->points + i;
-			if (tree_intersectdisk(root, point->data, &point->pos, DISK_RADIUS))
-				return (true);
-			i++;
-		}
-	}
-	else
-	{
-		if (tree_intersect(tree->northwest, root) == true)
-			return (true);
-		if (tree_intersect(tree->northeast, root) == true)
-			return (true);
-		if (tree_intersect(tree->southwest, root) == true)
-			return (true);
-		if (tree_intersect(tree->southeast, root) == true)
-			return (true);
-	}
-	return (false);
 }
 
 int		main(void)
@@ -172,7 +128,7 @@ int		main(void)
 	t_qtpoint*		qtptptr;
 	t_fpoint		campos;
 	t_fpoint		winoff;
-	t_disk*			disk;
+	t_shape*		shape;
 	t_qtreefunc		func[1];
 	unsigned int	i;
 	int				lastptscount;
@@ -180,6 +136,8 @@ int		main(void)
 	bool			prevented;
 	bool			up;
 	t_array*		array;
+	t_shape*		tmpshape;
+	double			x, y;
 
 	srand(time(NULL));
 	bounds.origin.x = 0;
@@ -187,8 +145,7 @@ int		main(void)
 	winoff.x = WIN_WIDTH / 2.0;
 	winoff.y = WIN_HEIGHT / 2.0;
 	campos = bounds.origin;
-	qtpoint.pos.x = 0;
-	qtpoint.pos.y = 0;
+	qtpoint.data = NULL;
 	bounds.halfsize.x = WORLD_SIZE;
 	bounds.halfsize.y = WORLD_SIZE;
 	qtpoint.type = 0x0;
@@ -208,25 +165,31 @@ int		main(void)
 			if (up)
 			{
 				prevented = false;
-				qtpoint.pos.x = (rand() % WORLD_SIZE * 20) / 10.0 - WORLD_SIZE;
-				qtpoint.pos.y = (rand() % WORLD_SIZE * 20) / 10.0 - WORLD_SIZE;
-				disk = disk_create(((rand() % 1900) + 100) / 10.0, rand() % 0xFFFFFF);
-				qtpoint.data = disk;
-				if (qtpoint.pos.x - disk->size <= -WORLD_SIZE || qtpoint.pos.x + disk->size > WORLD_SIZE || qtpoint.pos.y - disk->size <= -WORLD_SIZE || qtpoint.pos.y + disk->size > WORLD_SIZE)
+				x = (rand() % WORLD_SIZE * 20) / 10.0 - WORLD_SIZE;
+				y = (rand() % WORLD_SIZE * 20) / 10.0 - WORLD_SIZE;
+				if (rand() % 2)
+					shape = disk_create(((rand() % 1900) + 100) / 10.0, rand() % 0xFFFFFF, x, y);
+				else
+					shape = srect_create(((rand() % 1000) + 1000) / 10.0, ((rand() % 1000) + 1000) / 10.0, rand() % 0xFFFFFF, x, y);
+				qtpoint.shape = *shape;
+				if (qtpoint.shape.type == SHAPE_DISK && (qtpoint.shape.pos.x - ((t_disk*)shape->data)->size <= -WORLD_SIZE || qtpoint.shape.pos.x + ((t_disk*)shape->data)->size > WORLD_SIZE || qtpoint.shape.pos.y - ((t_disk*)shape->data)->size <= -WORLD_SIZE || qtpoint.shape.pos.y + ((t_disk*)shape->data)->size > WORLD_SIZE))
 				{
 					prevented = true;
-					free(disk);
+					shape_destroy(&shape);
 				}
-				else if (tree_intersectdisk(tree, disk, &qtpoint.pos, DISK_RADIUS))
+				else if ((tmpshape = qtree_intersectrange(tree, &qtpoint, NULL)) != NULL)
 				{
 					prevented = true;
-					free(disk);
+					shape_destroy(&shape);
+					shape_destroy(&tmpshape);
 				}
 				else if (!qtree_insert(tree, &qtpoint))
 				{
 					prevented = true;
-					free(disk);
+					shape_destroy(&shape);
 				}
+				else
+					free(shape);
 				currptscount = qtree_ptscount(tree);
 				if (!prevented && currptscount == lastptscount)
 				{
@@ -239,11 +202,11 @@ int		main(void)
 				qtree_applyfunc(tree, func, NULL);
 				func[0] = billiardfunc;
 				qtree_movepoints(tree, func, tree);
-				if (tree_intersect(tree, tree))
+				/*if (tree_intersect(tree, tree))
 				{
 					printf("FAILED\n");
 					events->play = false;
-				}
+				}*/
 				if (lastptscount >= 2000)
 					up = false;
 			}
