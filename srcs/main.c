@@ -34,15 +34,6 @@ bool	_func(t_qtpoint* point, void* data)
 	return (!(rand() % 100));
 }
 
-t_fpoint	angletovec(double angle)
-{
-	t_fpoint		result;
-
-	result.x = cos(angle);
-	result.y = sin(angle);
-	return (result);
-}
-
 double		reflect(double angle, t_fpoint* normal)
 {
 	/*t_fpoint		bvec;
@@ -187,9 +178,13 @@ int		main(void)
 				{
 					prevented = true;
 					shape_destroy(&shape);
+					shape_destroy(&tmpshape);
 				}
 				else
+				{
+					shape_destroy(&tmpshape);
 					free(shape);
+				}
 				currptscount = qtree_ptscount(tree);
 				if (!prevented && currptscount == lastptscount)
 				{
@@ -202,11 +197,6 @@ int		main(void)
 				qtree_applyfunc(tree, func, NULL);
 				func[0] = billiardfunc;
 				qtree_movepoints(tree, func, tree);
-				/*if (tree_intersect(tree, tree))
-				{
-					printf("FAILED\n");
-					events->play = false;
-				}*/
 				if (lastptscount >= 2000)
 					up = false;
 			}
