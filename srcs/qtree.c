@@ -318,7 +318,7 @@ void			qtree_movepoints(t_qtree* qtree, t_qtreefunc* func, void* data)
 	_qtree_movepoints(qtree, func, data, qtree);
 }
 
-t_shape*			qtree_intersectrange(const t_qtree* qtree, const t_qtpoint* pt, const t_frect* bounds)
+t_shape*		qtree_intersectrange(const t_qtree* qtree, const t_qtpoint* pt, const t_frect* bounds)
 {
 	int			i;
 	t_shape*	result;
@@ -342,7 +342,41 @@ t_shape*			qtree_intersectrange(const t_qtree* qtree, const t_qtpoint* pt, const
 		i = 0;
 		while (i < qtree->ptscount)
 		{
+			
 			if (qtree->points + i != pt && (result = shape_intersect(&qtree->points[i].shape, &pt->shape)) != NULL)
+				return (result);
+			i++;
+		}
+	}
+	return (result);
+}
+
+bool			qtree_colliderange(const t_qtree* qtree, const t_qtpoint* pt, const t_frect* bounds, t_fpoint* newpos)
+{
+	int			i;
+	bool	result;
+
+	result = false;
+	if (bounds != NULL && !frect_intersect(&qtree->bounds, bounds))
+		return (result);
+	if (qtree->northwest != NULL)
+	{
+		if ((result = qtree_intersectrange(qtree->northwest, pt, bounds)) != false)
+			return (result);
+		if ((result = qtree_intersectrange(qtree->northeast, pt, bounds)) != false)
+			return (result);
+		if ((result = qtree_intersectrange(qtree->southwest, pt, bounds)) != false)
+			return (result);
+		if ((result = qtree_intersectrange(qtree->southeast, pt, bounds)) != false)
+			return (result);
+	}
+	else
+	{
+		i = 0;
+		while (i < qtree->ptscount)
+		{
+			
+			if (qtree->points + i != pt && (result = shape_collide(&qtree->points[i].shape, &pt->shape, newpos)) != false)
 				return (result);
 			i++;
 		}

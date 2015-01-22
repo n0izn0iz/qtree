@@ -32,6 +32,7 @@ typedef bool (*t_qtreefunc)(t_qtpoint*, void*);
 t_qtree*		qtree_alloc(const t_frect* bounds);
 bool			qtree_insert(t_qtree* qtree, const t_qtpoint* pt);
 t_shape*		qtree_intersectrange(const t_qtree* qtree, const t_qtpoint* pt, const t_frect* bounds);
+bool			qtree_colliderange(const t_qtree* qtree, const t_qtpoint* pt, const t_frect* bounds, t_fpoint* newpos);
 t_array*		qtree_querryrange(const t_qtree* qtree, const t_frect* range);
 void			qtree_applyfunc(t_qtree* qtree, t_qtreefunc* func, void* data);
 void			qtree_movepoints(t_qtree* qtree, t_qtreefunc* func, void* data);

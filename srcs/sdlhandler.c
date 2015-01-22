@@ -47,7 +47,7 @@ void			sdlh_init(t_sdlh*	env)
 	atexit(SDL_Quit);
 	if ((env->window = SDL_CreateWindow("factoria", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_WIDTH, WIN_HEIGHT, SDL_WINDOW_RESIZABLE)) == NULL)
 		sdl_error("Unable to create window: %s\n");
-	if ((env->renderer = SDL_CreateRenderer(env->window, -1, 0)) == NULL)
+	if ((env->renderer = SDL_CreateRenderer(env->window, -1, SDL_RENDERER_PRESENTVSYNC)) == NULL)
 		sdl_error("Unable to create renderer: %s\n");
 	printf ("Bound render driver:\n");
 	displayrendererinfo(env->renderer, 0);

@@ -58,4 +58,42 @@ bool					frect_intersect(const t_frect* a_rect, const t_frect* b_rect)
 		return (true);
 }
 
+bool		frect_collide(const t_frect* a_rect, const t_frect* b_rect, t_fpoint* newpos)
+{
+	double recta_left, recta_right, recta_top, recta_bottom;
+	double rectb_left, rectb_right, rectb_top, rectb_bottom;
+
+	*newpos = a_rect->origin;
+	recta_left = a_rect->origin.x - a_rect->halfsize.x;
+	recta_right = a_rect->origin.x + a_rect->halfsize.x;
+	recta_top = a_rect->origin.y + a_rect->halfsize.y;
+	recta_bottom = a_rect->origin.y - a_rect->halfsize.y;
+	rectb_left = b_rect->origin.x - b_rect->halfsize.x;
+	rectb_right = b_rect->origin.x + b_rect->halfsize.x;
+	rectb_top = b_rect->origin.y + b_rect->halfsize.y;
+	rectb_bottom = b_rect->origin.y - b_rect->halfsize.y;
+	if (recta_right >= rectb_left)
+	{
+		newpos->x = a_rect->origin.x + (rectb_left - recta_right);
+		newpos->y = a_rect->origin.y;
+	}
+	else if (recta_left <= rectb_right)
+	{
+		newpos->x = a_rect->origin.x + (rectb_right - recta_left);
+		newpos->y = a_rect->origin.y;
+	}
+	else if (recta_top >= rectb_bottom)
+	{
+		newpos->x = a_rect->origin.x;
+		newpos->y = a_rect->origin.y + (rectb_bottom - recta_top);
+	}
+	else if (recta_bottom <= rectb_top)
+	{
+		newpos->x = a_rect->origin.x;
+		newpos->y = a_rect->origin.y + (rectb_top - recta_bottom);
+	}
+	else
+		return (false);
+	return (true);
+}
 

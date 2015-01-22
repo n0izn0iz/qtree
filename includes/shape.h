@@ -14,5 +14,6 @@ t_shape*		shape_alloc(unsigned int type, void* data, double x, double y);
 t_shape			shape_create(unsigned int type, void* data, double x, double y);
 void			shape_destroy(t_shape** shape);
 t_shape*		shape_intersect(const t_shape* shape1, const t_shape* shape2);
+t_shape*		shape_collide(const t_shape* shape1, const t_shape* shape2, t_fpoint* newpos);
 
 #endif

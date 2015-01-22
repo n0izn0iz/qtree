@@ -6,5 +6,6 @@
 #include "disk.h"
 
 bool		diskrectintersect(const t_frect* rect, const t_disk* disk, const t_fpoint* diskpos);
+bool		diskrectcollide(const t_frect* rect, const t_disk* disk, const t_fpoint* diskpos, t_fpoint* newpos);
 
 #endif

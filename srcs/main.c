@@ -58,8 +58,7 @@ bool		billiardfunc(t_qtpoint* pt, void* data)
 	t_disk*		disk;
 	t_qtree*	tree;
 	t_fpoint	normal;
-	t_shape		*shape;
-	t_fpoint	oldpos;
+	bool		result;
 	t_frect		querrybounds;
 
 	tree = data;
@@ -97,14 +96,12 @@ bool		billiardfunc(t_qtpoint* pt, void* data)
 		disk->angle = reflect(disk->angle, &normal);
 		return (true);
 	}
-	oldpos = pt->shape.pos;
 	pt->shape.pos = newpos;
-	querrybounds = frect_create(pt->shape.pos, fpoint_create(DISK_RADIUS + disk->size, DISK_RADIUS + disk->size));
-	if ((shape = qtree_intersectrange(tree, pt, &querrybounds)) != NULL)
+	querrybounds = frect_create(pt->shape.pos, fpoint_create(disk->size + 100, disk->size + 100));
+	if ((result = qtree_colliderange(tree, pt, &querrybounds, &newpos)) != false)
 	{
-		shape_destroy(&shape);
 		disk->angle = disk->angle - RAD(180.0);
-		pt->shape.pos = oldpos;
+		pt->shape.pos = newpos;
 	}
 	return (true);
 }
@@ -129,6 +126,7 @@ int		main(void)
 	t_array*		array;
 	t_shape*		tmpshape;
 	double			x, y;
+	void*			shapedata;
 
 	srand(time(NULL));
 	bounds.origin.x = 0;
@@ -209,6 +207,9 @@ int		main(void)
 				while (i < array->size)
 				{
 					qtptptr = array_get(array, i);
+					shapedata = qtptptr->shape.data;
+					if (shapedata != NULL)
+						free(shapedata);
 					free(qtptptr->data);
 					free(qtptptr);
 					i++;
